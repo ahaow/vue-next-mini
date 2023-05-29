@@ -1,6 +1,22 @@
 var Vue = (function (exports) {
     'use strict';
 
+    /**
+     * 判断是否为一个数组
+     */
+    var isArray = Array.isArray;
+    /**
+     * 判断是否为一个对象
+     */
+    var isObject = function (value) { return value !== null && typeof value === "object"; };
+    /**
+     * 对比两个数据是否发生改变
+     * @param value
+     * @param oldValue
+     * @returns
+     */
+    var hasChanged = function (value, oldValue) { return !Object.is(value, oldValue); };
+
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
 
@@ -56,11 +72,6 @@ var Vue = (function (exports) {
         }
         return to.concat(ar || Array.prototype.slice.call(from));
     }
-
-    /**
-     * 判断是否为一个数组
-     */
-    var isArray = Array.isArray;
 
     var createDep = function (effects) {
         var dep = new Set(effects);
@@ -189,9 +200,65 @@ var Vue = (function (exports) {
         proxyMap.set(target, proxy);
         return proxy;
     }
+    var toReactive = function (value) {
+        return isObject(value) ? reactive(value) : value;
+    };
+
+    function ref(value) {
+        return createRef(value, false);
+    }
+    function isRef(r) {
+        return !!(r && r.__v_isRef === true);
+    }
+    function createRef(rawValue, shallow) {
+        if (isRef(rawValue)) {
+            return rawValue;
+        }
+        return new RefImpl(rawValue, shallow);
+    }
+    // 收集依赖
+    function trackRefValue(ref) {
+        if (activeEffect) {
+            trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
+    // 触发依赖
+    function triggerRefValue(ref) {
+        if (ref.dep) {
+            triggerEffects(ref.dep);
+        }
+    }
+    var RefImpl = /** @class */ (function () {
+        function RefImpl(value, __v_isShallow) {
+            this.__v_isShallow = __v_isShallow;
+            this.dep = undefined;
+            this.__v_isRef = true;
+            this._rawValue = value;
+            this._value = __v_isShallow ? value : toReactive(value);
+        }
+        Object.defineProperty(RefImpl.prototype, "value", {
+            get: function () {
+                trackRefValue(this);
+                return this._value;
+            },
+            set: function (newVal) {
+                console.log(1);
+                if (hasChanged(newVal, this._rawValue)) {
+                    console.log('newVal', newVal);
+                    this._rawValue = newVal;
+                    this._value = toReactive(newVal);
+                    triggerRefValue(this);
+                }
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return RefImpl;
+    }());
 
     exports.effect = effect;
     exports.reactive = reactive;
+    exports.ref = ref;
 
     return exports;
 
