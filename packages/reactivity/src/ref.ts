@@ -57,9 +57,7 @@ class RefImpl<T> {
     }
 
     set value(newVal) {
-        console.log(1)
         if (hasChanged(newVal, this._rawValue)) {
-            console.log('newVal', newVal)
             this._rawValue = newVal
             this._value = toReactive(newVal)
             triggerRefValue(this)

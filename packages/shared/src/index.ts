@@ -15,3 +15,5 @@ export const isObject = (value: unknown) => value !== null && typeof value === "
  * @returns 
  */
 export const hasChanged = (value:any, oldValue):boolean => !Object.is(value, oldValue)
+
+export const isFunction = (value: unknown): value is Function => typeof value === "function"
