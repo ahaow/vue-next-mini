@@ -18,6 +18,8 @@ export const hasChanged = (value:any, oldValue):boolean => !Object.is(value, old
 
 export const isFunction = (value: unknown): value is Function => typeof value === "function"
 
+export const isString = (value: unknown): value is String => typeof value === "string"
+
 export const extend = Object.assign
 
 export const EMPTY_OBJ: {readonly [key: string]: any} = {}

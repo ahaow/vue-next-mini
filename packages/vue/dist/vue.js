@@ -17,6 +17,7 @@ var Vue = (function (exports) {
      */
     var hasChanged = function (value, oldValue) { return !Object.is(value, oldValue); };
     var isFunction = function (value) { return typeof value === "function"; };
+    var isString = function (value) { return typeof value === "string"; };
     var extend = Object.assign;
     var EMPTY_OBJ = {};
 
@@ -414,8 +415,116 @@ var Vue = (function (exports) {
         return value;
     }
 
+    /**
+     * 规范化 class 类，处理 class 的增强
+     */
+    function normalizeClass(value) {
+        var res = '';
+        // 判断是否为 string，如果是 string 就不需要专门处理
+        if (isString(value)) {
+            res = value;
+        }
+        // 额外的数组增强。官方案例：https://cn.vuejs.org/guide/essentials/class-and-style.html#binding-to-arrays
+        else if (isArray(value)) {
+            // 循环得到数组中的每个元素，通过 normalizeClass 方法进行迭代处理
+            for (var i = 0; i < value.length; i++) {
+                var normalized = normalizeClass(value[i]);
+                if (normalized) {
+                    res += normalized + ' ';
+                }
+            }
+        }
+        // 额外的对象增强。官方案例：https://cn.vuejs.org/guide/essentials/class-and-style.html#binding-html-classes
+        else if (isObject(value)) {
+            // for in 获取到所有的 key，这里的 key（name） 即为 类名。value 为 boolean 值
+            for (var name_1 in value) {
+                // 把 value 当做 boolean 来看，拼接 name
+                if (value[name_1]) {
+                    res += name_1 + ' ';
+                }
+            }
+        }
+        // 去左右空格
+        return res.trim();
+    }
+
+    var Fragment = Symbol('Fragment');
+    var Text = Symbol('Text');
+    var Comment = Symbol('Comment');
+    function isVNode(value) {
+        return value ? value.__v_isVNode === true : false;
+    }
+    function createVNode(type, props, children) {
+        if (props) {
+            var klass = props.class; props.style;
+            if (klass && !isString(klass)) {
+                props.class = normalizeClass(klass);
+            }
+        }
+        var shapeFlag = isString(type) ? 1 /* ShapeFlags.ELEMENT */ : isObject(type) ? 4 /* ShapeFlags.STATEFUL_COMPONENT */ : 0;
+        return createBaseVNode(type, props, children, shapeFlag);
+    }
+    function createBaseVNode(type, props, children, shapeFlag) {
+        var vnode = {
+            __v_isVNode: true,
+            type: type,
+            props: props,
+            children: children,
+            shapeFlag: shapeFlag
+        };
+        normalizeChildren(vnode, children);
+        return vnode;
+    }
+    function normalizeChildren(vnode, children) {
+        var type = 0;
+        if (children == null) {
+            children = null;
+        }
+        else if (isArray(children)) {
+            type = 16 /* ShapeFlags.ARRAY_CHILDREN */;
+        }
+        else if (isObject(children)) ;
+        else if (isFunction(children)) ;
+        else {
+            children = String(children);
+            type = 8 /* ShapeFlags.TEXT_CHILDREN */;
+        }
+        vnode.children = children;
+        vnode.shapeFlag |= type;
+    }
+
+    function h(type, propsOrChildren, children) {
+        var l = arguments.length;
+        console.log('l', l);
+        if (l === 2) {
+            if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {
+                if (isVNode(propsOrChildren)) {
+                    return createVNode(type, null, [propsOrChildren]);
+                }
+                return createVNode(type, propsOrChildren, []);
+            }
+            else {
+                return createVNode(type, null, propsOrChildren);
+            }
+        }
+        else {
+            if (l > 3) {
+                children = Array.prototype.slice.call(arguments, 2);
+            }
+            else if (l === 3 && isVNode(children)) {
+                children = [children];
+            }
+            console.log('children', children);
+            return createVNode(type, propsOrChildren, children);
+        }
+    }
+
+    exports.Comment = Comment;
+    exports.Fragment = Fragment;
+    exports.Text = Text;
     exports.computed = computed;
     exports.effect = effect;
+    exports.h = h;
     exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
